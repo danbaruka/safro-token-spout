@@ -17,8 +17,8 @@ const FaucetForm = () => {
 
     if (!address.startsWith('addr_safro')) {
       toast({
-        title: "Invalid Address",
-        description: "Address must start with 'addr_safro'",
+        title: "Adresse invalide",
+        description: "L'adresse doit commencer par 'addr_safro'",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -27,15 +27,20 @@ const FaucetForm = () => {
 
     try {
       // Use Supabase Edge Function for transaction
-      const { data: rawTxResult, error } = await supabase.functions.invoke('safro-transaction', {
+      const response = await supabase.functions.invoke('safro-transaction', {
         body: { receiver: address }
       });
-
+      
+      // Récupérer les données et vérifier les erreurs
+      const { data: rawTxResult, error } = response;
+      
       console.log("Supabase function response:", { rawTxResult, error });
 
-      // Handle Supabase client-side errors
+      // Si l'invocation retourne une erreur directe (comme un 429)
       if (error) {
-        // Check if it's a rate limit error from the error message or status code
+        console.log("Error detected:", error);
+        
+        // Vérifier si c'est un dépassement de limite
         if (error.message && (
           error.message.includes('429') || 
           error.message.includes('Rate limit') ||
@@ -44,23 +49,35 @@ const FaucetForm = () => {
           showRateLimitError();
           return;
         }
-        throw new Error(`Edge function error: ${error.message}`);
+        
+        throw new Error(`Erreur: ${error.message}`);
       }
       
-      // Check if the returned data indicates a rate limit issue (based on your edge function)
-      if (rawTxResult && 
-          ((rawTxResult.status_code === 429) || 
-           (rawTxResult.statusCode === 429) || 
-           (typeof rawTxResult === 'object' && rawTxResult.error && (
-             rawTxResult.error.includes('Rate limit exceeded') ||
-             rawTxResult.error.includes('daily limit') ||
-             rawTxResult.error.includes('per 24h'))))) {
+      // Vérifier si la réponse indique un problème de limite (429)
+      if (response.status === 429 || 
+          (rawTxResult && 
+            ((rawTxResult.status === 429) ||
+             (rawTxResult.statusCode === 429) || 
+             (typeof rawTxResult === 'object' && rawTxResult.error && (
+               String(rawTxResult.error).includes('Rate limit exceeded') ||
+               String(rawTxResult.error).includes('daily limit') ||
+               String(rawTxResult.error).includes('per 24h')))))) {
         showRateLimitError();
         return;
       }
 
+      // Si la réponse ne contient pas de hash de transaction, c'est une erreur
       if (!rawTxResult || !rawTxResult.transactionHash) {
-        throw new Error('Transaction failed: Invalid response from Edge Function');
+        // Vérifier encore une fois pour un message d'erreur de limite de fréquentation
+        if (rawTxResult && typeof rawTxResult === 'object' && 
+            rawTxResult.error && typeof rawTxResult.error === 'string' && 
+            (rawTxResult.error.includes('Rate limit') || 
+             rawTxResult.error.includes('daily limit'))) {
+          showRateLimitError();
+          return;
+        }
+        
+        throw new Error('Transaction échouée: Réponse invalide');
       }
 
       // Format the transaction data for display
@@ -79,7 +96,7 @@ const FaucetForm = () => {
       };
 
       toast({
-        title: "Transaction Successful!",
+        title: "Transaction réussie!",
         description: (
           <a 
             href={`https://rpcsafro.cardanotask.com/tx?hash=0x${txData.transactionHash}`}
@@ -87,24 +104,30 @@ const FaucetForm = () => {
             rel="noreferrer"
             className="text-blue-500 underline hover:text-blue-700"
           >
-            View Transaction on Safrochain Explorer
+            Voir la transaction sur Safrochain Explorer
           </a>
         ),
       });
     } catch (error) {
-      // Check for rate limit indicators in any error message
-      const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue. Veuillez réessayer plus tard.";
+      console.error("Erreur complète:", error);
       
+      // Extraction du message d'erreur
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Une erreur inconnue est survenue. Veuillez réessayer plus tard.";
+      
+      // Vérifier spécifiquement les indicateurs de limite de fréquentation
       if (
         errorMessage.includes('Rate limit exceeded') || 
         errorMessage.includes('faucet requests allowed per 24h') || 
         errorMessage.includes('429') || 
-        errorMessage.includes('Too Many Requests')
+        errorMessage.includes('Too Many Requests') ||
+        errorMessage.includes('daily limit')
       ) {
         showRateLimitError();
       } else {
         toast({
-          title: "Transaction Failed",
+          title: "Erreur de transaction",
           description: errorMessage,
           variant: "destructive",
         });
@@ -160,7 +183,7 @@ const FaucetForm = () => {
         <Wallet className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
         <Input
           type="text"
-          placeholder="Enter your Safrochain address"
+          placeholder="Entrez votre adresse Safrochain"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           className="pl-10 bg-white/5 border-gray-700"
@@ -175,12 +198,12 @@ const FaucetForm = () => {
         {isLoading ? (
           <span className="flex items-center">
             <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
-            Processing...
+            Traitement en cours...
           </span>
         ) : (
           <>
             <ArrowRight className="mr-2 h-5 w-5" />
-            Request 250 SAF
+            Demander 250 SAF
           </>
         )}
       </Button>
@@ -189,4 +212,3 @@ const FaucetForm = () => {
 };
 
 export default FaucetForm;
-
