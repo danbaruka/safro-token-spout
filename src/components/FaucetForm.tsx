@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Wallet, ArrowRight, Copy, Check, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Wallet, ArrowRight, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -40,8 +40,6 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
       // No direct 'status' property, only check 'error' and response 'data'
       const { data: rawTxResult, error } = response;
 
-      console.log("Supabase function response:", { rawTxResult, error });
-
       // 1: Rate limit error check
       if (isRateLimitError(error) || isRateLimitError(rawTxResult)) {
         showRateLimitError();
@@ -78,9 +76,9 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
       toast({
         title: "Transaction réussie!",
         description: (
-          <a 
+          <a
             href={`https://rpcsafro.cardanotask.com/tx?hash=0x${txData.transactionHash}`}
-            target="_blank" 
+            target="_blank"
             rel="noreferrer"
             className="text-blue-400 underline hover:text-blue-200"
           >
@@ -89,10 +87,8 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         ),
       });
     } catch (error) {
-      console.error("Erreur complète:", error);
-
-      const errorMessage = error instanceof Error 
-        ? error.message 
+      const errorMessage = error instanceof Error
+        ? error.message
         : "Une erreur inconnue est survenue. Veuillez réessayer plus tard.";
       if (isRateLimitErrorMessage(errorMessage)) {
         showRateLimitError();
@@ -148,58 +144,34 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
     setIsLoading(false);
   };
 
-  // Copy button
-  const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
-    const [isCopied, setIsCopied] = useState(false);
-
-    const handleCopy = () => {
-      navigator.clipboard.writeText(textToCopy);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    };
-
-    return (
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={handleCopy} 
-        className="hover:bg-transparent p-1"
-      >
-        {isCopied ? (
-          <Check className="h-4 w-4 text-green-500" />
-        ) : (
-          <Copy className="h-4 w-4 hover:text-blue-500" />
-        )}
-      </Button>
-    );
-  };
-
+  // UI: Big form, glass style, strong accent borders/focus, elegant button
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
-      <div className="relative">
-        <Wallet className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto space-y-8 flex flex-col items-center">
+      <div className="relative w-full">
+        <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 h-7 w-7 text-indigo-400" />
         <Input
           type="text"
           placeholder="Entrez votre adresse Safrochain"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className="pl-10 bg-white/5 border-gray-700"
+          className="pl-14 py-6 text-xl bg-white/25 dark:bg-white/5 border-2 border-indigo-200 dark:border-gray-700 focus:border-indigo-500 transition-all shadow-md rounded-2xl outline-none"
           required
+          disabled={isLoading}
         />
       </div>
-      <Button 
-        type="submit" 
-        className="w-full bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 hover:from-blue-600 hover:to-purple-500 font-bold text-white text-lg shadow-md py-3 rounded-xl flex items-center justify-center gap-2 transition"
+      <Button
+        type="submit"
+        className="w-full py-5 text-2xl font-bold rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 hover:from-blue-600 hover:to-purple-500 transition ring-2 ring-indigo-300/70 shadow-xl"
         disabled={isLoading}
       >
         {isLoading ? (
           <span className="flex items-center">
-            <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+            <RefreshCw className="mr-3 h-6 w-6 animate-spin" />
             Traitement en cours...
           </span>
         ) : (
           <>
-            <ArrowRight className="mr-2 h-5 w-5" />
+            <ArrowRight className="mr-4 h-6 w-6" />
             Demander {tokenAmount} {tokenSymbol}
           </>
         )}
