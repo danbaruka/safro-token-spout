@@ -20,6 +20,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Custom JSON stringifier to handle BigInt
+const JSONStringifyWithBigInt = (obj: unknown): string => {
+  return JSON.stringify(obj, (_, value) => 
+    typeof value === 'bigint' ? value.toString() : value
+  );
+};
+
 // Transaction function
 async function sendTokens(receiverAddress: string) {
   console.log("Starting transaction process...");
@@ -109,8 +116,8 @@ async function sendTokens(receiverAddress: string) {
         const receiverBalance = await client.getAllBalances(receiverAddress);
         console.log("Receiver's balance:", receiverBalance);
 
-        // Return successful transaction data
-        return {
+        // Convert BigInts to strings in the result
+        const processedResult = {
           success: true,
           transactionHash: result.transactionHash,
           chainId: chainId,
@@ -121,9 +128,11 @@ async function sendTokens(receiverAddress: string) {
           memo: MEMO,
           senderBalance: senderBalance,
           receiverBalance: receiverBalance,
-          gasUsed: result.gasUsed,
-          gasWanted: result.gasWanted
+          gasUsed: result.gasUsed ? result.gasUsed.toString() : undefined,
+          gasWanted: result.gasWanted ? result.gasWanted.toString() : undefined
         };
+
+        return processedResult;
       } catch (error) {
         console.error("Transaction error:", error.message);
         console.error("Raw transaction error response:", error.response || error);
@@ -198,7 +207,7 @@ serve(async (req) => {
     
     // Return successful response
     return new Response(
-      JSON.stringify(result),
+      JSONStringifyWithBigInt(result),
       { 
         status: 200, 
         headers: { 
