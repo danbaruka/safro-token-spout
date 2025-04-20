@@ -6,7 +6,13 @@ import { Wallet, ArrowRight, Copy, Check, RefreshCw, AlertTriangle } from 'lucid
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-const FaucetForm = () => {
+// Props for dynamic amount/symbol
+interface FaucetFormProps {
+  tokenAmount?: number;
+  tokenSymbol?: string;
+}
+
+const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps) => {
   const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -30,21 +36,20 @@ const FaucetForm = () => {
       const response = await supabase.functions.invoke('safro-transaction', {
         body: { receiver: address }
       });
-      
-      // Récupérer les données et vérifier les erreurs
+
+      // No direct 'status' property, only check 'error' and response 'data'
       const { data: rawTxResult, error } = response;
-      
+
       console.log("Supabase function response:", { rawTxResult, error });
 
-      // Cas 1: Vérification explicite des erreurs de limite de fréquentation
+      // 1: Rate limit error check
       if (isRateLimitError(error) || isRateLimitError(rawTxResult)) {
         showRateLimitError();
         return;
       }
 
-      // Cas 2: Pas de transaction hash, mais pas d'erreur de limite = erreur générique
+      // 2: Invalid/failed transaction, not rate limit
       if (!rawTxResult || !rawTxResult.transactionHash) {
-        // Une dernière vérification pour les messages d'erreur de limite de fréquentation
         if (rawTxResult && typeof rawTxResult === 'object' && rawTxResult.error) {
           const errorStr = String(rawTxResult.error);
           if (errorStr.includes('Rate limit') || errorStr.includes('daily limit') || errorStr.includes('per 24h')) {
@@ -52,8 +57,6 @@ const FaucetForm = () => {
             return;
           }
         }
-        
-        // Si ce n'est pas une erreur de limite, alors c'est une autre erreur
         throw new Error('Transaction échouée: ' + (error?.message || rawTxResult?.error || 'Erreur inconnue'));
       }
 
@@ -62,7 +65,7 @@ const FaucetForm = () => {
         transactionHash: rawTxResult.transactionHash,
         chainId: rawTxResult.chainId || 'safrochain',
         blockHeight: rawTxResult.height?.toString(),
-        amount: rawTxResult.amount || { denom: 'saf', amount: '250' },
+        amount: rawTxResult.amount || { denom: tokenSymbol.toLowerCase(), amount: String(tokenAmount) },
         senderAddress: rawTxResult.senderAddress,
         receiverAddress: rawTxResult.receiverAddress || address,
         memo: rawTxResult.memo || 'Sending tokens with CosmJS',
@@ -79,7 +82,7 @@ const FaucetForm = () => {
             href={`https://rpcsafro.cardanotask.com/tx?hash=0x${txData.transactionHash}`}
             target="_blank" 
             rel="noreferrer"
-            className="text-blue-500 underline hover:text-blue-700"
+            className="text-blue-400 underline hover:text-blue-200"
           >
             Voir la transaction sur Safrochain Explorer
           </a>
@@ -87,13 +90,10 @@ const FaucetForm = () => {
       });
     } catch (error) {
       console.error("Erreur complète:", error);
-      
-      // Extraction du message d'erreur
+
       const errorMessage = error instanceof Error 
         ? error.message 
         : "Une erreur inconnue est survenue. Veuillez réessayer plus tard.";
-      
-      // Vérification finale des indicateurs de limite de fréquentation
       if (isRateLimitErrorMessage(errorMessage)) {
         showRateLimitError();
       } else {
@@ -108,29 +108,21 @@ const FaucetForm = () => {
     }
   };
 
-  // Fonction pour vérifier si une erreur est liée à la limite de fréquentation
+  // Checks for rate limit-like errors in various possible error objects
   const isRateLimitError = (obj: any): boolean => {
     if (!obj) return false;
-    
-    // Vérifier le code d'erreur HTTP 429
     if (obj.code === '429' || obj.status === 429 || obj.statusCode === 429) return true;
-    
-    // Vérifier le message d'erreur
     if (obj.message && isRateLimitErrorMessage(obj.message)) return true;
-    
-    // Vérifier les propriétés d'erreur imbriquées
     if (obj.error) {
       const errorStr = String(obj.error);
       if (isRateLimitErrorMessage(errorStr)) return true;
     }
-    
     return false;
   };
-  
-  // Fonction pour vérifier si un message contient des indicateurs de limite de fréquentation
+
+  // Checks error message for rate limiting terms
   const isRateLimitErrorMessage = (message: string): boolean => {
     if (!message) return false;
-    
     return (
       message.includes('429') ||
       message.includes('Rate limit') ||
@@ -141,7 +133,7 @@ const FaucetForm = () => {
     );
   };
 
-  // Helper function to show rate limit error
+  // Show per-day rate limit error
   const showRateLimitError = () => {
     toast({
       title: "Limite journalière atteinte",
@@ -156,7 +148,7 @@ const FaucetForm = () => {
     setIsLoading(false);
   };
 
-  // Component for copying text
+  // Copy button
   const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
     const [isCopied, setIsCopied] = useState(false);
 
@@ -197,7 +189,7 @@ const FaucetForm = () => {
       </div>
       <Button 
         type="submit" 
-        className="w-full bg-[#355dab] hover:bg-[#2a4a8a]"
+        className="w-full bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 hover:from-blue-600 hover:to-purple-500 font-bold text-white text-lg shadow-md py-3 rounded-xl flex items-center justify-center gap-2 transition"
         disabled={isLoading}
       >
         {isLoading ? (
@@ -208,7 +200,7 @@ const FaucetForm = () => {
         ) : (
           <>
             <ArrowRight className="mr-2 h-5 w-5" />
-            Demander 250 SAF
+            Demander {tokenAmount} {tokenSymbol}
           </>
         )}
       </Button>
