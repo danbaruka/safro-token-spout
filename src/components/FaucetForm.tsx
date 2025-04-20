@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Wallet, ArrowRight, Copy, Check, RefreshCw } from 'lucide-react';
+import { Wallet, ArrowRight, Copy, Check, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -33,6 +33,22 @@ const FaucetForm = () => {
 
       if (error) {
         throw new Error(`Edge function error: ${error.message}`);
+      }
+      
+      // Handle rate limit error from the edge function
+      if (rawTxResult && rawTxResult.error && rawTxResult.error.includes('Rate limit exceeded')) {
+        toast({
+          title: "Daily Limit Reached",
+          description: (
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
+              <span>You've reached the daily request limit. Please try again tomorrow.</span>
+            </div>
+          ),
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
 
       if (!rawTxResult || !rawTxResult.transactionHash) {
@@ -68,13 +84,27 @@ const FaucetForm = () => {
         ),
       });
     } catch (error) {
-      toast({
-        title: "Transaction Failed",
-        description: error instanceof Error 
-          ? error.message 
-          : "An unknown error occurred. Please try again later.",
-        variant: "destructive",
-      });
+      // Check specifically for rate limit messages
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred. Please try again later.";
+      
+      if (errorMessage.includes('Rate limit exceeded') || errorMessage.includes('faucet requests allowed per 24h')) {
+        toast({
+          title: "Daily Limit Reached",
+          description: (
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
+              <span>You've reached the daily request limit. Please try again tomorrow.</span>
+            </div>
+          ),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Transaction Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
