@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Faucet, Wallet } from 'lucide-react';
+import { Wallet, ArrowRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 const FaucetForm = () => {
@@ -64,7 +64,7 @@ const FaucetForm = () => {
           "Processing..."
         ) : (
           <>
-            <Faucet className="mr-2 h-5 w-5" />
+            <ArrowRight className="mr-2 h-5 w-5" />
             Request 250 SAF
           </>
         )}
