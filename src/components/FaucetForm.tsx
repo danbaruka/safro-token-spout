@@ -36,32 +36,31 @@ const FaucetForm = () => {
       
       console.log("Supabase function response:", { rawTxResult, error });
 
-      // Si l'invocation retourne une erreur directe (comme un 429)
-      if (error) {
-        console.log("Error detected:", error);
-        
-        // Vérifier si c'est un dépassement de limite
-        if (error.message && (
+      // Vérifier si c'est une erreur 429 (rate limit) - première méthode
+      if (error && (
+        error.message && (
           error.message.includes('429') || 
           error.message.includes('Rate limit') ||
           error.message.includes('Too Many Requests')
-        )) {
-          showRateLimitError();
-          return;
-        }
-        
-        throw new Error(`Erreur: ${error.message}`);
+        )
+      )) {
+        showRateLimitError();
+        return;
       }
       
-      // Vérifier si la réponse indique un problème de limite (429)
-      if (response.status === 429 || 
-          (rawTxResult && 
-            ((rawTxResult.status === 429) ||
-             (rawTxResult.statusCode === 429) || 
-             (typeof rawTxResult === 'object' && rawTxResult.error && (
-               String(rawTxResult.error).includes('Rate limit exceeded') ||
-               String(rawTxResult.error).includes('daily limit') ||
-               String(rawTxResult.error).includes('per 24h')))))) {
+      // Vérifier si c'est une erreur 429 (rate limit) - deuxième méthode en utilisant le code d'erreur
+      if (error && error.code === '429') {
+        showRateLimitError();
+        return;
+      }
+      
+      // Vérifier si la réponse indique un problème de limite dans le résultat
+      if (rawTxResult && 
+          ((typeof rawTxResult === 'object' && rawTxResult.error && (
+            String(rawTxResult.error).includes('Rate limit exceeded') ||
+            String(rawTxResult.error).includes('daily limit') ||
+            String(rawTxResult.error).includes('per 24h')))
+          )) {
         showRateLimitError();
         return;
       }
