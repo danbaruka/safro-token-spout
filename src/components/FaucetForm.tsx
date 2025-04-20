@@ -31,6 +31,8 @@ const FaucetForm = () => {
         body: { receiver: address }
       });
 
+      console.log("Supabase function response:", { rawTxResult, error });
+
       // Handle Supabase client-side errors
       if (error) {
         // Check if it's a rate limit error from the error message or status code
@@ -45,15 +47,16 @@ const FaucetForm = () => {
         throw new Error(`Edge function error: ${error.message}`);
       }
       
-      // Handle rate limit error from the edge function payload
-      if (rawTxResult && rawTxResult.error) {
-        if (rawTxResult.error.includes('Rate limit exceeded') ||
-            rawTxResult.error.includes('daily limit') ||
-            rawTxResult.error.includes('per 24h')) {
-          showRateLimitError();
-          return;
-        }
-        throw new Error(`Transaction failed: ${rawTxResult.error}`);
+      // Check if the returned data indicates a rate limit issue (based on your edge function)
+      if (rawTxResult && 
+          ((rawTxResult.status_code === 429) || 
+           (rawTxResult.statusCode === 429) || 
+           (typeof rawTxResult === 'object' && rawTxResult.error && (
+             rawTxResult.error.includes('Rate limit exceeded') ||
+             rawTxResult.error.includes('daily limit') ||
+             rawTxResult.error.includes('per 24h'))))) {
+        showRateLimitError();
+        return;
       }
 
       if (!rawTxResult || !rawTxResult.transactionHash) {
