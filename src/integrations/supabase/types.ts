@@ -9,7 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      safro_faucet_config: {
+        Row: {
+          amount: string
+          created_at: string | null
+          denom: string
+          explorer_url_prefix: string
+          id: number
+          memo: string
+          mnemonic: string
+          prefix: string
+          rpc_endpoint: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: string
+          created_at?: string | null
+          denom: string
+          explorer_url_prefix?: string
+          id?: number
+          memo: string
+          mnemonic: string
+          prefix: string
+          rpc_endpoint: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: string
+          created_at?: string | null
+          denom?: string
+          explorer_url_prefix?: string
+          id?: number
+          memo?: string
+          mnemonic?: string
+          prefix?: string
+          rpc_endpoint?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
