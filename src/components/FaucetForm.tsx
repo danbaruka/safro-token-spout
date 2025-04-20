@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Wallet, ArrowRight, Copy, Check } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const FaucetForm = () => {
   const [address, setAddress] = useState('');
@@ -28,15 +28,50 @@ const FaucetForm = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Simulated transaction hash
-      const txHash = "0x123456789abcdef"; 
+      // Simulated transaction data
+      const txData = {
+        senderAddress: "addr_safro1heje8hs89em9af3sk3vnshg2x3ujqx8fxtt9vl",
+        receiverAddress: address,
+        chainId: "safrochain",
+        amount: { denom: 'saf', amount: '250' },
+        transactionHash: "927A1AEF8F04BA01BC4E3D2BA4069B5E92DAA25A9AC6D55D7F66568808F9E842",
+        blockHeight: "187118",
+        senderBalance: "19999999982558",
+        receiverBalance: "50000000001500",
+        memo: "Sending tokens with CosmJS"
+      };
 
       toast({
-        title: "Success!",
+        title: "Transaction Successful!",
         description: (
-          <div className="flex items-center justify-between">
-            <span>250 SAF tokens sent</span>
-            <CopyButton textToCopy={txHash} />
+          <div className="space-y-2 mt-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">Transaction Hash:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs">{txData.transactionHash.slice(0, 10)}...</span>
+                <CopyButton textToCopy={txData.transactionHash} />
+              </div>
+            </div>
+            <div className="grid gap-1.5 text-xs">
+              <div>
+                <span className="font-semibold">Chain:</span> {txData.chainId}
+              </div>
+              <div>
+                <span className="font-semibold">Block Height:</span> {txData.blockHeight}
+              </div>
+              <div>
+                <span className="font-semibold">Amount Sent:</span> {txData.amount.amount} {txData.amount.denom.toUpperCase()}
+              </div>
+              <div>
+                <span className="font-semibold">From:</span> {txData.senderAddress.slice(0, 12)}...
+              </div>
+              <div>
+                <span className="font-semibold">To:</span> {txData.receiverAddress.slice(0, 12)}...
+              </div>
+              <div>
+                <span className="font-semibold">Memo:</span> {txData.memo}
+              </div>
+            </div>
           </div>
         ),
       });
