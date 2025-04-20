@@ -22,8 +22,8 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
 
     if (!address.startsWith('addr_safro')) {
       toast({
-        title: "Adresse invalide",
-        description: "L'adresse doit commencer par 'addr_safro'",
+        title: "Invalid address",
+        description: "Address must start with 'addr_safro'",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -49,7 +49,7 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
             return;
           }
         }
-        throw new Error('Transaction échouée: ' + (error?.message || rawTxResult?.error || 'Erreur inconnue'));
+        throw new Error('Transaction failed: ' + (error?.message || rawTxResult?.error || 'Unknown error'));
       }
 
       const txData = {
@@ -67,7 +67,7 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
       };
 
       toast({
-        title: "Transaction réussie!",
+        title: "Success!",
         description: (
           <a 
             href={`https://rpcsafro.cardanotask.com/tx?hash=0x${txData.transactionHash}`}
@@ -75,19 +75,19 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
             rel="noreferrer"
             className="text-blue-400 underline hover:text-blue-200"
           >
-            Voir la transaction sur Safrochain Explorer
+            View transaction on Safrochain Explorer
           </a>
         ),
       });
     } catch (error) {
       const errorMessage = error instanceof Error 
         ? error.message 
-        : "Une erreur inconnue est survenue. Veuillez réessayer plus tard.";
+        : "An unknown error occurred. Please try again later.";
       if (isRateLimitErrorMessage(errorMessage)) {
         showRateLimitError();
       } else {
         toast({
-          title: "Erreur de transaction",
+          title: "Transaction error",
           description: errorMessage,
           variant: "destructive",
         });
@@ -113,7 +113,6 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
     return (
       message.includes('429') ||
       message.includes('Rate limit') ||
-      message.includes('limite journalière') ||
       message.includes('daily limit') ||
       message.includes('Too Many Requests') ||
       message.includes('per 24h')
@@ -122,11 +121,11 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
 
   const showRateLimitError = () => {
     toast({
-      title: "Limite journalière atteinte",
+      title: "Daily limit reached",
       description: (
         <div className="flex items-center">
-          <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
-          <span>Vous avez atteint votre limite journalière. Veuillez réessayer demain.</span>
+          <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
+          <span>You have reached your daily limit. Please try again tomorrow.</span>
         </div>
       ),
       variant: "destructive",
@@ -139,7 +138,7 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
     const handleCopy = () => {
       navigator.clipboard.writeText(textToCopy);
       setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+      setTimeout(() => setIsCopied(false), 1500);
     };
     return (
       <Button 
@@ -147,6 +146,8 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         size="sm" 
         onClick={handleCopy} 
         className="hover:bg-transparent p-1"
+        tabIndex={-1}
+        aria-label="Copy address"
       >
         {isCopied ? (
           <Check className="h-4 w-4 text-green-500" />
@@ -160,68 +161,72 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
   return (
     <form 
       onSubmit={handleSubmit} 
-      className="w-full max-w-2xl mx-auto rounded-3xl px-0 py-0 shadow-2xl glass-morphism border border-white/20 
-                bg-gradient-to-br from-white via-indigo-50 to-purple-100 dark:from-[#1a2239] dark:via-[#21284d] dark:to-[#191e2a]
-                transition-all duration-300 backdrop-blur-2xl relative overflow-hidden lg:p-14 md:p-10 p-7"
+      className="w-full mx-auto p-0 rounded-2xl shadow-2xl glass-morphism border border-white/10 
+                bg-gradient-to-br from-white/70 via-indigo-50 to-purple-100 
+                dark:from-[#191c2a] dark:via-[#23284a] dark:to-[#181a23]
+                transition-all duration-300 backdrop-blur-xl relative overflow-hidden
+                flex flex-col gap-8 min-h-[325px]"
     >
-      <div className="mb-8 flex flex-col gap-3">
-        <h2 className="text-3xl md:text-4xl font-extrabold text-indigo-950 dark:text-white bg-gradient-to-r from-blue-700 via-purple-800 to-indigo-600 bg-clip-text text-transparent text-center tracking-tight drop-shadow-2xl">
-          Demandez vos tokens de test Safrochain
+      {/* Header */}
+      <div className="flex flex-row items-center gap-3 justify-between w-full mb-2">
+        <h2 className="text-xl font-bold text-indigo-950 dark:text-white bg-gradient-to-r from-blue-700 via-purple-800 to-indigo-600 bg-clip-text text-transparent tracking-tight">
+          Request Safrochain Test Tokens
         </h2>
-        <p className="text-center text-lg md:text-xl text-secondary-foreground dark:text-gray-200/70">
-          Entrez votre adresse pour recevoir <b>{tokenAmount} {tokenSymbol}</b> gratuits sur le testnet.
-        </p>
+        <span className="rounded-full px-3 py-1 text-xs bg-blue-50/90 dark:bg-indigo-950/60 text-indigo-700 dark:text-white font-semibold border border-blue-100">
+          {tokenAmount} {tokenSymbol}
+        </span>
       </div>
-      <div className="flex flex-col gap-8">
-        <div>
-          <label htmlFor="safro-address" className="block text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200 text-left">
-            Adresse Safrochain
-          </label>
-          <div className="relative flex items-center">
-            <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-indigo-500 dark:text-indigo-300" />
-            <Input
-              id="safro-address"
-              type="text"
-              placeholder="Ex: addr_safro1xyz..."
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="pl-14 pr-12 h-16 text-xl text-gray-800 dark:text-white bg-white/80 dark:bg-black/15 border-2 border-indigo-200 dark:border-indigo-900 shadow-lg rounded-2xl
+      {/* Address Input */}
+      <div>
+        <label htmlFor="safro-address" className="block text-xs md:text-sm font-semibold mb-1 text-gray-800 dark:text-gray-200 text-left">
+          Safrochain Address
+        </label>
+        <div className="relative flex items-center">
+          <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-500 dark:text-indigo-300" />
+          <Input
+            id="safro-address"
+            type="text"
+            placeholder="e.g. addr_safro1xyz..."
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="pl-12 pr-12 h-12 text-base text-gray-800 dark:text-white bg-white/80 dark:bg-black/10 border-2 border-indigo-200 dark:border-indigo-800 shadow-md rounded-xl
                 focus:border-blue-400 dark:focus:border-indigo-400 focus:ring-2 focus:ring-blue-200/60 font-medium transition-all"
-              required
-              maxLength={90}
-              autoFocus
-            />
-            {address && <span className="absolute right-3"><CopyButton textToCopy={address} /></span>}
-          </div>
+            required
+            maxLength={90}
+            autoFocus
+          />
+          {address && <span className="absolute right-3"><CopyButton textToCopy={address} /></span>}
         </div>
-        <Button
-          type="submit"
-          className="w-full h-16 text-2xl py-0 px-10 mt-6 rounded-2xl font-bold flex items-center justify-center gap-3 
-                     bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700
-                     hover:from-indigo-700 hover:to-blue-400 shadow-xl
-                     transition-all duration-150 outline-none focus:outline-none"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <span className="flex items-center">
-              <RefreshCw className="mr-2 h-6 w-6 animate-spin" />
-              Traitement en cours...
-            </span>
-          ) : (
-            <>
-              <ArrowRight className="mr-2 h-6 w-6" />
-              Demander {tokenAmount} {tokenSymbol}
-            </>
-          )}
-        </Button>
       </div>
-      <div className="mt-10 text-center text-sm text-gray-400 dark:text-gray-400/70">
-        <span>Besoin d'aide ? Veuillez utiliser une adresse <b>commençant par addr_safro</b>.<br></br>
-        Limite : 1 demande par jour.</span>
+      {/* Submit Button */}
+      <Button
+        type="submit"
+        className="w-full h-12 text-base py-0 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 
+                   bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700
+                   hover:from-indigo-800 hover:to-blue-400 shadow-lg transition-all"
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <span className="flex items-center">
+            <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+            Processing...
+          </span>
+        ) : (
+          <>
+            <ArrowRight className="mr-2 h-5 w-5" />
+            Request Tokens
+          </>
+        )}
+      </Button>
+      {/* Helper */}
+      <div className="mt-1 text-center text-xs text-gray-400 dark:text-gray-400/70">
+        <span>
+          Please use an address starting with <b>addr_safro</b>.<br />
+          One request per address per day.
+        </span>
       </div>
     </form>
   );
 };
 
 export default FaucetForm;
-
