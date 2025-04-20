@@ -9,7 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 const FaucetForm = () => {
   const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [txAttempt, setTxAttempt] = useState(0);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,23 +68,6 @@ const FaucetForm = () => {
         ),
       });
     } catch (error) {
-      // Implement retry logic on frontend side for network issues
-      if (txAttempt < 2) {
-        setTxAttempt(txAttempt + 1);
-        toast({
-          title: "Transaction Attempt Failed",
-          description: `Retrying... (Attempt ${txAttempt + 1}/3)`,
-          variant: "default",
-        });
-        
-        // Wait a moment before retrying
-        setTimeout(() => {
-          handleSubmit(e);
-        }, 2000);
-        return;
-      }
-      
-      // After all retries, show final error
       toast({
         title: "Transaction Failed",
         description: error instanceof Error 
@@ -93,9 +75,6 @@ const FaucetForm = () => {
           : "An unknown error occurred. Please try again later.",
         variant: "destructive",
       });
-      
-      // Reset retry counter
-      setTxAttempt(0);
     } finally {
       setIsLoading(false);
     }
@@ -147,7 +126,7 @@ const FaucetForm = () => {
         {isLoading ? (
           <span className="flex items-center">
             <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
-            {txAttempt > 0 ? `Retrying (${txAttempt}/3)...` : "Processing..."}
+            Processing...
           </span>
         ) : (
           <>
@@ -161,4 +140,3 @@ const FaucetForm = () => {
 };
 
 export default FaucetForm;
-
