@@ -27,19 +27,13 @@ const FaucetForm = () => {
 
     try {
       // Use Supabase Edge Function for transaction
-      const { data: rawTxResult, error, status } = await supabase.functions.invoke('safro-transaction', {
+      const { data: rawTxResult, error } = await supabase.functions.invoke('safro-transaction', {
         body: { receiver: address }
       });
 
-      // Handle rate limit specifically from status code 429
-      if (status === 429) {
-        showRateLimitError();
-        return;
-      }
-
       // Handle Supabase client-side errors
       if (error) {
-        // Check if it's a rate limit error from the error message
+        // Check if it's a rate limit error from the error message or status code
         if (error.message && (
           error.message.includes('429') || 
           error.message.includes('Rate limit') ||
