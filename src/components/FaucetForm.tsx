@@ -40,6 +40,7 @@ const FaucetForm = () => {
         throw new Error('Transaction failed: Invalid response from Edge Function');
       }
       
+      // Format the transaction data for display
       const txData = {
         transactionHash: rawTxResult.transactionHash,
         chainId: rawTxResult.chainId || 'safrochain',
@@ -50,7 +51,6 @@ const FaucetForm = () => {
         memo: rawTxResult.memo || 'Sending tokens with CosmJS',
         senderBalance: rawTxResult.senderBalance,
         receiverBalance: rawTxResult.receiverBalance,
-        rawLog: rawTxResult.rawLog,
         gasUsed: rawTxResult.gasUsed?.toString(),
         gasWanted: rawTxResult.gasWanted?.toString()
       };
