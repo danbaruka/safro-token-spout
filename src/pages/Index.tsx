@@ -58,7 +58,7 @@ const Index = () => {
         </div>
 
         {/* The Request Form */}
-        <div className="w-full max-w-xl mx-auto">
+        <div className="w-[70vw] max-w-5xl mx-auto">
           <FaucetForm tokenAmount={tokenAmount ?? 250} tokenSymbol={tokenSymbol ?? "SAF"} />
         </div>
       </div>
