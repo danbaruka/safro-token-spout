@@ -24,7 +24,7 @@ const FaucetForm = () => {
     }
 
     try {
-      const response = await fetch('https://rpcsafro.cardanotask.com/transaction', {
+      const response = await fetch('https://safro.cardanotask.com/transaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
