@@ -38,6 +38,11 @@ const FaucetForm = () => {
         })
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
       const rawTxResult = await response.json();
       
       const txData = {
@@ -95,7 +100,7 @@ const FaucetForm = () => {
     } catch (error) {
       toast({
         title: "Transaction Failed",
-        description: "Please try again later",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",
       });
     } finally {
@@ -160,4 +165,3 @@ const FaucetForm = () => {
 };
 
 export default FaucetForm;
-
