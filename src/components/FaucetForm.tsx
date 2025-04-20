@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,7 @@ const FaucetForm = () => {
     }
 
     try {
-      const response = await fetch('https://safro.cardanotask.com/transaction', {
+      const response = await fetch('https://rpcsafro.cardanotask.com/transaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,10 +77,10 @@ const FaucetForm = () => {
                 <span className="font-semibold">Amount Sent:</span> {txData.amount.amount} {txData.amount.denom.toUpperCase()}
               </div>
               <div>
-                <span className="font-semibold">From:</span> {txData.senderAddress.slice(0, 12)}...
+                <span className="font-semibold">From:</span> {txData.senderAddress?.slice(0, 12)}...
               </div>
               <div>
-                <span className="font-semibold">To:</span> {txData.receiverAddress.slice(0, 12)}...
+                <span className="font-semibold">To:</span> {txData.receiverAddress?.slice(0, 12)}...
               </div>
               <div>
                 <span className="font-semibold">Memo:</span> {txData.memo}
@@ -159,3 +160,4 @@ const FaucetForm = () => {
 };
 
 export default FaucetForm;
+
