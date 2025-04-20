@@ -27,14 +27,24 @@ const FaucetForm = () => {
 
     try {
       // Use Supabase Edge Function for transaction
-      const { data: rawTxResult, error } = await supabase.functions.invoke('safro-transaction', {
+      const { data: rawTxResult, error, status } = await supabase.functions.invoke('safro-transaction', {
         body: { receiver: address }
       });
 
+      // Handle rate limit specifically from status code 429
+      if (status === 429) {
+        showRateLimitError();
+        return;
+      }
+
       // Handle Supabase client-side errors
       if (error) {
-        // Check if it's a rate limit error from the 429 status
-        if (error.message && (error.message.includes('429') || error.message.includes('Rate limit'))) {
+        // Check if it's a rate limit error from the error message
+        if (error.message && (
+          error.message.includes('429') || 
+          error.message.includes('Rate limit') ||
+          error.message.includes('Too Many Requests')
+        )) {
           showRateLimitError();
           return;
         }
@@ -42,9 +52,14 @@ const FaucetForm = () => {
       }
       
       // Handle rate limit error from the edge function payload
-      if (rawTxResult && rawTxResult.error && rawTxResult.error.includes('Rate limit exceeded')) {
-        showRateLimitError();
-        return;
+      if (rawTxResult && rawTxResult.error) {
+        if (rawTxResult.error.includes('Rate limit exceeded') ||
+            rawTxResult.error.includes('daily limit') ||
+            rawTxResult.error.includes('per 24h')) {
+          showRateLimitError();
+          return;
+        }
+        throw new Error(`Transaction failed: ${rawTxResult.error}`);
       }
 
       if (!rawTxResult || !rawTxResult.transactionHash) {
@@ -80,10 +95,15 @@ const FaucetForm = () => {
         ),
       });
     } catch (error) {
-      // Check specifically for rate limit messages
+      // Check for rate limit indicators in any error message
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred. Please try again later.";
       
-      if (errorMessage.includes('Rate limit exceeded') || errorMessage.includes('faucet requests allowed per 24h') || errorMessage.includes('429')) {
+      if (
+        errorMessage.includes('Rate limit exceeded') || 
+        errorMessage.includes('faucet requests allowed per 24h') || 
+        errorMessage.includes('429') || 
+        errorMessage.includes('Too Many Requests')
+      ) {
         showRateLimitError();
       } else {
         toast({
