@@ -58,38 +58,14 @@ const FaucetForm = () => {
       toast({
         title: "Transaction Successful!",
         description: (
-          <div className="space-y-2 mt-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold">Transaction Hash:</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs">{txData.transactionHash.slice(0, 10)}...</span>
-                <CopyButton textToCopy={txData.transactionHash} />
-              </div>
-            </div>
-            <div className="grid gap-1.5 text-xs">
-              <div>
-                <span className="font-semibold">Chain:</span> {txData.chainId}
-              </div>
-              <div>
-                <span className="font-semibold">Block Height:</span> {txData.blockHeight}
-              </div>
-              <div>
-                <span className="font-semibold">Amount Sent:</span> {txData.amount.amount} {txData.amount.denom.toUpperCase()}
-              </div>
-              <div>
-                <span className="font-semibold">From:</span> {txData.senderAddress?.slice(0, 12)}...
-              </div>
-              <div>
-                <span className="font-semibold">To:</span> {txData.receiverAddress?.slice(0, 12)}...
-              </div>
-              <div>
-                <span className="font-semibold">Memo:</span> {txData.memo}
-              </div>
-              <div>
-                <span className="font-semibold">Gas Used/Wanted:</span> {txData.gasUsed}/{txData.gasWanted}
-              </div>
-            </div>
-          </div>
+          <a 
+            href={`https://rpcsafro.cardanotask.com/tx?hash=${txData.transactionHash}`}
+            target="_blank" 
+            rel="noreferrer"
+            className="text-blue-500 underline hover:text-blue-700"
+          >
+            View Transaction on Safrochain Explorer
+          </a>
         ),
       });
     } catch (error) {
@@ -185,3 +161,4 @@ const FaucetForm = () => {
 };
 
 export default FaucetForm;
+
