@@ -36,47 +36,25 @@ const FaucetForm = () => {
       
       console.log("Supabase function response:", { rawTxResult, error });
 
-      // Vérifier si c'est une erreur 429 (rate limit) - première méthode
-      if (error && (
-        error.message && (
-          error.message.includes('429') || 
-          error.message.includes('Rate limit') ||
-          error.message.includes('Too Many Requests')
-        )
-      )) {
-        showRateLimitError();
-        return;
-      }
-      
-      // Vérifier si c'est une erreur 429 (rate limit) - deuxième méthode en utilisant le code d'erreur
-      if (error && error.code === '429') {
-        showRateLimitError();
-        return;
-      }
-      
-      // Vérifier si la réponse indique un problème de limite dans le résultat
-      if (rawTxResult && 
-          ((typeof rawTxResult === 'object' && rawTxResult.error && (
-            String(rawTxResult.error).includes('Rate limit exceeded') ||
-            String(rawTxResult.error).includes('daily limit') ||
-            String(rawTxResult.error).includes('per 24h')))
-          )) {
+      // Cas 1: Vérification explicite des erreurs de limite de fréquentation
+      if (isRateLimitError(error) || isRateLimitError(rawTxResult)) {
         showRateLimitError();
         return;
       }
 
-      // Si la réponse ne contient pas de hash de transaction, c'est une erreur
+      // Cas 2: Pas de transaction hash, mais pas d'erreur de limite = erreur générique
       if (!rawTxResult || !rawTxResult.transactionHash) {
-        // Vérifier encore une fois pour un message d'erreur de limite de fréquentation
-        if (rawTxResult && typeof rawTxResult === 'object' && 
-            rawTxResult.error && typeof rawTxResult.error === 'string' && 
-            (rawTxResult.error.includes('Rate limit') || 
-             rawTxResult.error.includes('daily limit'))) {
-          showRateLimitError();
-          return;
+        // Une dernière vérification pour les messages d'erreur de limite de fréquentation
+        if (rawTxResult && typeof rawTxResult === 'object' && rawTxResult.error) {
+          const errorStr = String(rawTxResult.error);
+          if (errorStr.includes('Rate limit') || errorStr.includes('daily limit') || errorStr.includes('per 24h')) {
+            showRateLimitError();
+            return;
+          }
         }
         
-        throw new Error('Transaction échouée: Réponse invalide');
+        // Si ce n'est pas une erreur de limite, alors c'est une autre erreur
+        throw new Error('Transaction échouée: ' + (error?.message || rawTxResult?.error || 'Erreur inconnue'));
       }
 
       // Format the transaction data for display
@@ -115,14 +93,8 @@ const FaucetForm = () => {
         ? error.message 
         : "Une erreur inconnue est survenue. Veuillez réessayer plus tard.";
       
-      // Vérifier spécifiquement les indicateurs de limite de fréquentation
-      if (
-        errorMessage.includes('Rate limit exceeded') || 
-        errorMessage.includes('faucet requests allowed per 24h') || 
-        errorMessage.includes('429') || 
-        errorMessage.includes('Too Many Requests') ||
-        errorMessage.includes('daily limit')
-      ) {
+      // Vérification finale des indicateurs de limite de fréquentation
+      if (isRateLimitErrorMessage(errorMessage)) {
         showRateLimitError();
       } else {
         toast({
@@ -134,6 +106,39 @@ const FaucetForm = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fonction pour vérifier si une erreur est liée à la limite de fréquentation
+  const isRateLimitError = (obj: any): boolean => {
+    if (!obj) return false;
+    
+    // Vérifier le code d'erreur HTTP 429
+    if (obj.code === '429' || obj.status === 429 || obj.statusCode === 429) return true;
+    
+    // Vérifier le message d'erreur
+    if (obj.message && isRateLimitErrorMessage(obj.message)) return true;
+    
+    // Vérifier les propriétés d'erreur imbriquées
+    if (obj.error) {
+      const errorStr = String(obj.error);
+      if (isRateLimitErrorMessage(errorStr)) return true;
+    }
+    
+    return false;
+  };
+  
+  // Fonction pour vérifier si un message contient des indicateurs de limite de fréquentation
+  const isRateLimitErrorMessage = (message: string): boolean => {
+    if (!message) return false;
+    
+    return (
+      message.includes('429') ||
+      message.includes('Rate limit') ||
+      message.includes('limite journalière') ||
+      message.includes('daily limit') ||
+      message.includes('Too Many Requests') ||
+      message.includes('per 24h')
+    );
   };
 
   // Helper function to show rate limit error
@@ -151,6 +156,7 @@ const FaucetForm = () => {
     setIsLoading(false);
   };
 
+  // Component for copying text
   const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
     const [isCopied, setIsCopied] = useState(false);
 
