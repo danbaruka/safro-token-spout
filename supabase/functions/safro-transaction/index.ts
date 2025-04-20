@@ -1,16 +1,12 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 // Helper to fetch faucet config from Supabase
 async function fetchFaucetConfig() {
-  // This uses the service role key, which is automatically attached for edge functions in Supabase
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://phqtdczpawzuvdpbxarn.supabase.co";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
   if (!SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY secret is not set");
   }
-
   const url = `${SUPABASE_URL}/rest/v1/safro_faucet_config?select=*&order=id.desc&limit=1`;
   const resp = await fetch(url, {
     headers: {
@@ -34,12 +30,75 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Custom JSON stringifier to handle BigInt
-const JSONStringifyWithBigInt = (obj: unknown): string => {
-  return JSON.stringify(obj, (_, value) => 
-    typeof value === 'bigint' ? value.toString() : value
-  );
-};
+// Custom JSON stringifier for BigInt
+const JSONStringifyWithBigInt = (obj: unknown): string =>
+  JSON.stringify(obj, (_, value) => (typeof value === "bigint" ? value.toString() : value));
+
+// Helper: Insert request info to user_requests table
+async function insertUserRequest({ ip_address, region, user_agent, receiver_address, success, transaction_hash }: {
+  ip_address: string,
+  region: string | null,
+  user_agent: string | null,
+  receiver_address: string,
+  success: boolean,
+  transaction_hash: string | null,
+}) {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://phqtdczpawzuvdpbxarn.supabase.co";
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const resp = await fetch(`${SUPABASE_URL}/rest/v1/user_requests`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY!,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      ip_address,
+      region,
+      user_agent,
+      receiver_address,
+      success,
+      transaction_hash,
+    }),
+  });
+  // do not throw on insert errors; just log
+  if (!resp.ok) {
+    console.error("Failed to log user request:", await resp.text());
+  }
+}
+
+// Helper: Count requests by IP in last 24h
+async function getRequestCountByIp(ip: string, sinceISO: string) {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://phqtdczpawzuvdpbxarn.supabase.co";
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const url = `${SUPABASE_URL}/rest/v1/user_requests?ip_address=eq.${ip}&request_timestamp=gte.${sinceISO}&select=id`;
+  const resp = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY!,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json"
+    }
+  });
+  if (!resp.ok) return 0;
+  const arr = await resp.json();
+  return Array.isArray(arr) ? arr.length : 0;
+}
+
+// Helper: Try to geolocate user's region (optional)
+async function fetchRegion(ip: string): Promise<string | null> {
+  if (!ip || ip === "127.0.0.1" || ip === "::1") return null;
+  try {
+    // Using ipinfo.io (free, returns country)
+    const resp = await fetch(`https://ipinfo.io/${ip}/json`);
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    // Return combined country and region if available
+    return json.country ? [json.country, json.region, json.city].filter(Boolean).join(", ") : null;
+  } catch {
+    return null;
+  }
+}
 
 async function sendTokens(receiverAddress: string) {
   console.log("Starting transaction process...");
@@ -161,52 +220,117 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  let ip = "";
+  let user_agent: string | null = null;
+  let region: string | null = null;
+  let receiver_address = "";
+  let tx_success = false;
+  let tx_hash: string | null = null;
+
   try {
-    if (req.method !== "POST") {
-      return new Response(
-        JSON.stringify({ error: "Method not allowed" }),
-        { 
-          status: 405,
-          headers: { "Content-Type": "application/json", ...corsHeaders }
-        }
-      );
-    }
+    // Extract IP: try headers, then req.conn (not available), fallback to null
+    ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      ""; // Empty string if not found
+
+    user_agent = req.headers.get("user-agent") || null;
+
     const requestData = await req.json();
-    const { receiver } = requestData;
-    // Fetch config for dynamic prefix
+    receiver_address = requestData.receiver;
+    // Fetch config for prefix and IP rate limit
     const config = await fetchFaucetConfig();
     const PREFIX = config.prefix;
-    const receiverAddress = receiver;
-    if (!receiverAddress || !receiverAddress.startsWith(PREFIX)) {
+    const REQUESTS_LIMIT = config.requests_limit_per_day || 3;
+
+    // IP is required for rate limiting
+    if (!ip) {
       return new Response(
-        JSON.stringify({ error: `Invalid receiver address. Must start with: ${PREFIX}` }),
-        { 
-          status: 400,
-          headers: { "Content-Type": "application/json", ...corsHeaders }
-        }
+        JSON.stringify({ error: "IP address could not be determined", success: false }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    // 24 hour window
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const requestCount = await getRequestCountByIp(ip, since);
+    if (requestCount >= REQUESTS_LIMIT) {
+      // Insert failed log (enforced regardless of tx) for analysis
+      await insertUserRequest({
+        ip_address: ip,
+        region: null,
+        user_agent,
+        receiver_address,
+        success: false,
+        transaction_hash: null,
+      });
+      return new Response(
+        JSON.stringify({
+          error: `Rate limit exceeded. Only ${REQUESTS_LIMIT} faucet requests allowed per 24h from the same IP.`,
+          success: false
+        }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Core transaction logic now uses dynamic config
-    const result = await sendTokens(receiverAddress);
+    // Prefix validation
+    if (!receiver_address || !receiver_address.startsWith(PREFIX)) {
+      // Log as failed (invalid address)
+      await insertUserRequest({
+        ip_address: ip,
+        region: null,
+        user_agent,
+        receiver_address,
+        success: false,
+        transaction_hash: null,
+      });
+      return new Response(
+        JSON.stringify({ error: `Invalid receiver address. Must start with: ${PREFIX}` }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Try to fetch region as extra metadata (non-blocking)
+    region = await fetchRegion(ip);
+
+    // Core transaction logic
+    const result = await sendTokens(receiver_address);
+    tx_success = Boolean(result && result.success);
+    tx_hash = tx_success && result.transactionHash ? String(result.transactionHash) : null;
+
+    // Log success attempt
+    await insertUserRequest({
+      ip_address: ip,
+      region,
+      user_agent,
+      receiver_address,
+      success: tx_success,
+      transaction_hash: tx_hash,
+    });
+
     return new Response(
       JSONStringifyWithBigInt(result),
-      { 
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders }
-      }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error) {
+    // Try to log failed attempt
+    try {
+      await insertUserRequest({
+        ip_address: ip,
+        region,
+        user_agent,
+        receiver_address,
+        success: false,
+        transaction_hash: null,
+      });
+    } catch {}
     console.error("Error in request handler:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : "An unknown error occurred", 
-        success: false 
+      JSON.stringify({
+        error: error instanceof Error ? error.message : "An unknown error occurred",
+        success: false,
       }),
-      { 
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders }
-      }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 });

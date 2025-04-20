@@ -19,6 +19,7 @@ export type Database = {
           memo: string
           mnemonic: string
           prefix: string
+          requests_limit_per_day: number
           rpc_endpoint: string
           updated_at: string | null
         }
@@ -31,6 +32,7 @@ export type Database = {
           memo: string
           mnemonic: string
           prefix: string
+          requests_limit_per_day?: number
           rpc_endpoint: string
           updated_at?: string | null
         }
@@ -43,8 +45,42 @@ export type Database = {
           memo?: string
           mnemonic?: string
           prefix?: string
+          requests_limit_per_day?: number
           rpc_endpoint?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_requests: {
+        Row: {
+          id: number
+          ip_address: string
+          receiver_address: string
+          region: string | null
+          request_timestamp: string | null
+          success: boolean | null
+          transaction_hash: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          id?: number
+          ip_address: string
+          receiver_address: string
+          region?: string | null
+          request_timestamp?: string | null
+          success?: boolean | null
+          transaction_hash?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          id?: number
+          ip_address?: string
+          receiver_address?: string
+          region?: string | null
+          request_timestamp?: string | null
+          success?: boolean | null
+          transaction_hash?: string | null
+          user_agent?: string | null
         }
         Relationships: []
       }
