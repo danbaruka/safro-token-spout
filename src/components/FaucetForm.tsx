@@ -161,69 +161,83 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
   return (
     <form 
       onSubmit={handleSubmit} 
-      className="w-full mx-auto p-0 rounded-2xl shadow-2xl glass-morphism border border-white/10 
-                bg-gradient-to-br from-white/70 via-indigo-50 to-purple-100 
-                dark:from-[#191c2a] dark:via-[#23284a] dark:to-[#181a23]
-                transition-all duration-300 backdrop-blur-xl relative overflow-hidden
-                flex flex-col gap-8 min-h-[325px]"
+      className="w-full max-w-2xl min-w-[400px] mx-auto
+                 p-0 rounded-2xl border border-white/10 bg-white/60 dark:bg-[#191c2a]/80
+                 shadow-[0_8px_32px_0_rgba(31,38,135,0.19)]
+                 glass-morphism
+                 backdrop-blur-xl 
+                 overflow-hidden 
+                 flex flex-row items-stretch gap-0
+                 min-h-[210px] max-h-[340px]
+                 transition-all duration-300
+                 relative"
+      style={{
+        aspectRatio: '2.7/1',
+        boxShadow: '0 4px 36px 0 rgba(78,58,122,0.15), 0 2px 12px 1px rgba(62,20,95,0.09)',
+        background: 'linear-gradient(90deg,#ede9fc 0%, #f6f8fd 51%, #e3e4fb 100%)',
+      }}
     >
-      {/* Header */}
-      <div className="flex flex-row items-center gap-3 justify-between w-full mb-2">
-        <h2 className="text-xl font-bold text-indigo-950 dark:text-white bg-gradient-to-r from-blue-700 via-purple-800 to-indigo-600 bg-clip-text text-transparent tracking-tight">
+      {/* Left: Form Fields */}
+      <div className="flex flex-col flex-1 justify-center items-start px-10 py-6 gap-3 lg:gap-4">
+        {/* Header */}
+        <h2 className="text-lg font-bold text-[#452b87] dark:text-white bg-gradient-to-r from-[#6c3edb] via-[#a1a7f8] to-[#fbafe3] bg-clip-text text-transparent tracking-tight mb-2">
           Request Safrochain Test Tokens
         </h2>
-        <span className="rounded-full px-3 py-1 text-xs bg-blue-50/90 dark:bg-indigo-950/60 text-indigo-700 dark:text-white font-semibold border border-blue-100">
-          {tokenAmount} {tokenSymbol}
-        </span>
-      </div>
-      {/* Address Input */}
-      <div>
-        <label htmlFor="safro-address" className="block text-xs md:text-sm font-semibold mb-1 text-gray-800 dark:text-gray-200 text-left">
+        {/* Input */}
+        <label htmlFor="safro-address" className="block text-[13px] md:text-sm font-medium mb-1 text-gray-800/70 dark:text-gray-200/80 text-left">
           Safrochain Address
         </label>
-        <div className="relative flex items-center">
-          <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-500 dark:text-indigo-300" />
+        <div className="relative flex items-center w-full">
+          <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-indigo-400 dark:text-indigo-300" />
           <Input
             id="safro-address"
             type="text"
             placeholder="e.g. addr_safro1xyz..."
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="pl-12 pr-12 h-12 text-base text-gray-800 dark:text-white bg-white/80 dark:bg-black/10 border-2 border-indigo-200 dark:border-indigo-800 shadow-md rounded-xl
-                focus:border-blue-400 dark:focus:border-indigo-400 focus:ring-2 focus:ring-blue-200/60 font-medium transition-all"
+            className="pl-10 pr-11 h-9 text-[15px] text-gray-800 dark:text-white bg-white/70 dark:bg-black/10 border border-indigo-100 dark:border-indigo-700 shadow rounded-lg
+              focus:border-indigo-300 dark:focus:border-indigo-400 transition-all"
             required
             maxLength={90}
             autoFocus
+            style={{ minWidth: 0 }}
           />
-          {address && <span className="absolute right-3"><CopyButton textToCopy={address} /></span>}
+          {address && <span className="absolute right-2"><CopyButton textToCopy={address} /></span>}
         </div>
-      </div>
-      {/* Submit Button */}
-      <Button
-        type="submit"
-        className="w-full h-12 text-base py-0 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 
-                   bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700
-                   hover:from-indigo-800 hover:to-blue-400 shadow-lg transition-all"
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <span className="flex items-center">
-            <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
-            Processing...
-          </span>
-        ) : (
-          <>
-            <ArrowRight className="mr-2 h-5 w-5" />
-            Request Tokens
-          </>
-        )}
-      </Button>
-      {/* Helper */}
-      <div className="mt-1 text-center text-xs text-gray-400 dark:text-gray-400/70">
-        <span>
-          Please use an address starting with <b>addr_safro</b>.<br />
-          One request per address per day.
+        {/* Helper */}
+        <span className="mt-1 text-[11px] leading-tight text-gray-400 dark:text-gray-400/60">
+          Please use an address starting with <b>addr_safro</b>. Only one request per day.
         </span>
+      </div>
+
+      {/* Right: Action & Amount */}
+      <div className="flex flex-col justify-between items-end flex-shrink-0 border-l border-white/20 px-7 py-6 gap-4 bg-gradient-to-b from-white/70 via-white/40 to-purple-50 dark:from-[#222238]/80 dark:via-[#221f35]/70 dark:to-transparent"
+        style={{ minWidth: '220px' }}>
+        <div className="flex items-center gap-2 mb-4 mt-1">
+          <span className="rounded-lg px-3 py-1 text-[13px] bg-[#ece5fc] dark:bg-[#34246b] text-[#6c3edb] dark:text-indigo-200 font-semibold border border-[#ddcef9] dark:border-[#47307c]">
+            {tokenAmount} {tokenSymbol}
+          </span>
+        </div>
+        <Button
+          type="submit"
+          className="w-full px-6 py-[10px] text-sm rounded-lg font-semibold flex items-center justify-center gap-2
+            bg-gradient-to-r from-[#8e7ced] via-[#aea7e6] to-[#fee1fa]
+            hover:from-[#7c66b3] hover:to-[#e9cef8] shadow-lg transition-all duration-200"
+          disabled={isLoading}
+          style={{ minWidth: 0 }}
+        >
+          {isLoading ? (
+            <span className="flex items-center text-[13px]">
+              <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
+              Processing...
+            </span>
+          ) : (
+            <>
+              <ArrowRight className="mr-1 h-4 w-4" />
+              Request Tokens
+            </>
+          )}
+        </Button>
       </div>
     </form>
   );
