@@ -62,7 +62,7 @@ const FaucetForm = () => {
       if (!rawTxResult || !rawTxResult.transactionHash) {
         throw new Error('Transaction failed: Invalid response from Edge Function');
       }
-      
+
       // Format the transaction data for display
       const txData = {
         transactionHash: rawTxResult.transactionHash,
@@ -93,7 +93,7 @@ const FaucetForm = () => {
       });
     } catch (error) {
       // Check for rate limit indicators in any error message
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred. Please try again later.";
+      const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue. Veuillez réessayer plus tard.";
       
       if (
         errorMessage.includes('Rate limit exceeded') || 
@@ -117,11 +117,11 @@ const FaucetForm = () => {
   // Helper function to show rate limit error
   const showRateLimitError = () => {
     toast({
-      title: "Daily Limit Reached",
+      title: "Limite journalière atteinte",
       description: (
         <div className="flex items-center">
           <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
-          <span>You've reached the daily request limit. Please try again tomorrow.</span>
+          <span>Vous avez atteint votre limite journalière. Veuillez réessayer demain.</span>
         </div>
       ),
       variant: "destructive",
@@ -189,3 +189,4 @@ const FaucetForm = () => {
 };
 
 export default FaucetForm;
+
