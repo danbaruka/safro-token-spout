@@ -31,23 +31,19 @@ const FaucetForm = () => {
         body: { receiver: address }
       });
 
+      // Handle Supabase client-side errors
       if (error) {
+        // Check if it's a rate limit error from the 429 status
+        if (error.message && (error.message.includes('429') || error.message.includes('Rate limit'))) {
+          showRateLimitError();
+          return;
+        }
         throw new Error(`Edge function error: ${error.message}`);
       }
       
-      // Handle rate limit error from the edge function
+      // Handle rate limit error from the edge function payload
       if (rawTxResult && rawTxResult.error && rawTxResult.error.includes('Rate limit exceeded')) {
-        toast({
-          title: "Daily Limit Reached",
-          description: (
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
-              <span>You've reached the daily request limit. Please try again tomorrow.</span>
-            </div>
-          ),
-          variant: "destructive",
-        });
-        setIsLoading(false);
+        showRateLimitError();
         return;
       }
 
@@ -87,17 +83,8 @@ const FaucetForm = () => {
       // Check specifically for rate limit messages
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred. Please try again later.";
       
-      if (errorMessage.includes('Rate limit exceeded') || errorMessage.includes('faucet requests allowed per 24h')) {
-        toast({
-          title: "Daily Limit Reached",
-          description: (
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
-              <span>You've reached the daily request limit. Please try again tomorrow.</span>
-            </div>
-          ),
-          variant: "destructive",
-        });
+      if (errorMessage.includes('Rate limit exceeded') || errorMessage.includes('faucet requests allowed per 24h') || errorMessage.includes('429')) {
+        showRateLimitError();
       } else {
         toast({
           title: "Transaction Failed",
@@ -108,6 +95,21 @@ const FaucetForm = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper function to show rate limit error
+  const showRateLimitError = () => {
+    toast({
+      title: "Daily Limit Reached",
+      description: (
+        <div className="flex items-center">
+          <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
+          <span>You've reached the daily request limit. Please try again tomorrow.</span>
+        </div>
+      ),
+      variant: "destructive",
+    });
+    setIsLoading(false);
   };
 
   const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
