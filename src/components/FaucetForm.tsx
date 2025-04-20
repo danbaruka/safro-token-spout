@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,21 +23,35 @@ const FaucetForm = () => {
       return;
     }
 
-    // Simulating transaction
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch('https://rpcsafro.cardanotask.com/transaction', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiver: address,
+          amount: '250',
+          denom: 'saf',
+          memo: 'Sending tokens with CosmJS'
+        })
+      });
+
+      const rawTxResult = await response.json();
       
-      // Simulated transaction data
       const txData = {
-        senderAddress: "addr_safro1heje8hs89em9af3sk3vnshg2x3ujqx8fxtt9vl",
-        receiverAddress: address,
-        chainId: "safrochain",
-        amount: { denom: 'saf', amount: '250' },
-        transactionHash: "927A1AEF8F04BA01BC4E3D2BA4069B5E92DAA25A9AC6D55D7F66568808F9E842",
-        blockHeight: "187118",
-        senderBalance: "19999999982558",
-        receiverBalance: "50000000001500",
-        memo: "Sending tokens with CosmJS"
+        transactionHash: rawTxResult.transactionHash,
+        chainId: rawTxResult.chainId || 'safrochain',
+        blockHeight: rawTxResult.height.toString(),
+        amount: rawTxResult.amount || { denom: 'saf', amount: '250' },
+        senderAddress: rawTxResult.senderAddress,
+        receiverAddress: rawTxResult.receiverAddress || address,
+        memo: rawTxResult.memo || 'Sending tokens with CosmJS',
+        senderBalance: rawTxResult.senderBalance,
+        receiverBalance: rawTxResult.receiverBalance,
+        rawLog: rawTxResult.rawLog,
+        gasUsed: rawTxResult.gasUsed?.toString(),
+        gasWanted: rawTxResult.gasWanted?.toString()
       };
 
       toast({
@@ -71,6 +84,9 @@ const FaucetForm = () => {
               <div>
                 <span className="font-semibold">Memo:</span> {txData.memo}
               </div>
+              <div>
+                <span className="font-semibold">Gas Used/Wanted:</span> {txData.gasUsed}/{txData.gasWanted}
+              </div>
             </div>
           </div>
         ),
@@ -86,7 +102,6 @@ const FaucetForm = () => {
     }
   };
 
-  // New component for copy functionality
   const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
     const [isCopied, setIsCopied] = useState(false);
 
