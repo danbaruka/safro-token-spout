@@ -1,4 +1,3 @@
-
 import FaucetForm from '@/components/FaucetForm';
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +30,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center w-full bg-gradient-to-tr from-[#1d2232] via-[#23243b] to-[#312540] p-6">
-      <div className="flex flex-col justify-center items-center gap-8 max-w-lg w-full">
+      <div className="flex flex-col justify-center items-center gap-8 max-w-[900px] w-full mx-auto">
         {/* Branding and Information */}
         <div className="flex flex-col justify-center items-center max-w-md px-6 text-center">
           <img 
@@ -58,11 +57,11 @@ const Index = () => {
         </div>
 
         {/* The Request Form */}
-        <div className="w-[70vw] max-w-5xl mx-auto">
+        <div className="w-full px-4">
           <FaucetForm tokenAmount={tokenAmount ?? 250} tokenSymbol={tokenSymbol ?? "SAF"} />
         </div>
       </div>
-      <footer className="mt-12 w-full text-center text-xs text-gray-500 py-2 opacity-80 pointer-events-none select-none max-w-lg">
+      <footer className="mt-12 w-full text-center text-xs text-gray-500 py-2 opacity-80 pointer-events-none select-none max-w-lg mx-auto">
         Safrochain Testnet Faucet &mdash; for developers and testing only
       </footer>
     </div>
