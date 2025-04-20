@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Wallet, ArrowRight } from 'lucide-react';
+import { Wallet, ArrowRight, Copy, Check } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 const FaucetForm = () => {
@@ -27,9 +27,18 @@ const FaucetForm = () => {
     // Simulating transaction
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Simulated transaction hash
+      const txHash = "0x123456789abcdef"; 
+
       toast({
         title: "Success!",
-        description: "250 SAF tokens have been sent to your wallet",
+        description: (
+          <div className="flex items-center justify-between">
+            <span>250 SAF tokens sent</span>
+            <CopyButton textToCopy={txHash} />
+          </div>
+        ),
       });
     } catch (error) {
       toast({
@@ -40,6 +49,32 @@ const FaucetForm = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // New component for copy functionality
+  const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
+    const [isCopied, setIsCopied] = useState(false);
+
+    const handleCopy = () => {
+      navigator.clipboard.writeText(textToCopy);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    };
+
+    return (
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={handleCopy} 
+        className="hover:bg-transparent p-1"
+      >
+        {isCopied ? (
+          <Check className="h-4 w-4 text-green-500" />
+        ) : (
+          <Copy className="h-4 w-4 hover:text-blue-500" />
+        )}
+      </Button>
+    );
   };
 
   return (
