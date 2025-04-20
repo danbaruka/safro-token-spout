@@ -59,7 +59,7 @@ const FaucetForm = () => {
         title: "Transaction Successful!",
         description: (
           <a 
-            href={`https://rpcsafro.cardanotask.com/tx?hash=${txData.transactionHash}`}
+            href={`https://rpcsafro.cardanotask.com/tx?hash=0x${txData.transactionHash}`}
             target="_blank" 
             rel="noreferrer"
             className="text-blue-500 underline hover:text-blue-700"
