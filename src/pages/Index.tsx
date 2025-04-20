@@ -30,7 +30,7 @@ const Index = () => {
         {/* Branding and Information */}
         <div className="flex flex-col justify-center items-center max-w-md px-6 text-center">
           <img src="https://i.ibb.co/99q9HK6D/Safrochain-Logo.png" alt="Safrochain Logo" className="h-24 mb-4 drop-shadow-2xl" />
-          <h1 className="text-4xl font-extrabold mb-2 bg-gradient-to-tr from-blue-400 via-indigo-400 to-purple-400 text-transparent bg-clip-text">
+          <h1 className="font-extrabold mb-2 bg-gradient-to-tr from-blue-400 via-indigo-400 to-purple-400 text-transparent bg-clip-text text-3xl">
             Safrochain Faucet
           </h1>
           <p className="text-sm md:text-base font-medium text-gray-300 mb-6 max-w-[420px]">
