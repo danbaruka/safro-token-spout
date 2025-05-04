@@ -154,9 +154,10 @@ async function sendTokens(receiverAddress: string) {
 
     const chainId = await client.getChainId();
     const senderBalance = await client.getAllBalances(senderAddress);
-    // Fee config same as before
+    
+    // Increase the fee amount from 500 to 5000 based on error message
     const fee = {
-      amount: [{ denom: DENOM, amount: "500" }],
+      amount: [{ denom: DENOM, amount: "5000" }],
       gas: "200000",
     };
 

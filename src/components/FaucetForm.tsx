@@ -48,6 +48,15 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
             showRateLimitError();
             return;
           }
+
+          // Display the full error message in a toast
+          toast({
+            title: "Transaction error",
+            description: errorStr,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
         }
         throw new Error('Transaction failed: ' + (error?.message || rawTxResult?.error || 'Unknown error'));
       }
@@ -83,12 +92,18 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
       const errorMessage = error instanceof Error 
         ? error.message 
         : "An unknown error occurred. Please try again later.";
+      
       if (isRateLimitErrorMessage(errorMessage)) {
         showRateLimitError();
       } else {
+        // Display the full error message
         toast({
           title: "Transaction error",
-          description: errorMessage,
+          description: (
+            <div className="max-w-[340px] break-words">
+              {errorMessage}
+            </div>
+          ),
           variant: "destructive",
         });
       }
