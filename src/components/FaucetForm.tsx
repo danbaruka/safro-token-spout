@@ -79,7 +79,7 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         title: "Success!",
         description: (
           <a 
-            href={`https://rpcsafro.cardanotask.com/tx?hash=0x${txData.transactionHash}`}
+            href={rawTxResult.explorerTxUrl || `https://rpcsafro.cardanotask.com/tx?hash=0x${txData.transactionHash}`}
             target="_blank" 
             rel="noreferrer"
             className="text-blue-400 underline hover:text-blue-200"
