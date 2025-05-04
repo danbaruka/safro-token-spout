@@ -11,7 +11,7 @@ export default defineConfig(({ mode }: ConfigEnv) => ({
     port: 8080,
   },
   preview: {
-    allowedHosts: ['faucet.cardanotask.com'],
+    allowedHosts: ['faucet.safrochain.com'],
   },
   plugins: [
     react(),
