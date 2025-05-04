@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 // Helper to fetch faucet config from Supabase
@@ -136,13 +137,20 @@ async function sendTokens(receiverAddress: string) {
     console.log("Prefix:", PREFIX);
     console.log("Memo:", MEMO);
 
+    // Ensure RPC endpoint has a protocol
+    let rpcEndpointWithProtocol = RPC_ENDPOINT;
+    if (!RPC_ENDPOINT.startsWith('http://') && !RPC_ENDPOINT.startsWith('https://')) {
+      rpcEndpointWithProtocol = `https://${RPC_ENDPOINT}`;
+      console.log("Added https:// protocol to RPC endpoint:", rpcEndpointWithProtocol);
+    }
+
     const wallet = await DirectSecp256k1HdWallet.fromMnemonic(MNEMONIC, {
       prefix: PREFIX,
       hdPaths: [stringToPath("m/44'/118'/0'/0/0")],
     });
     const [senderAccount] = await wallet.getAccounts();
     const senderAddress = senderAccount.address;
-    const client = await SigningStargateClient.connectWithSigner(RPC_ENDPOINT, wallet);
+    const client = await SigningStargateClient.connectWithSigner(rpcEndpointWithProtocol, wallet);
 
     const chainId = await client.getChainId();
     const senderBalance = await client.getAllBalances(senderAddress);
