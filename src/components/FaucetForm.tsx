@@ -30,36 +30,52 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
       return;
     }
 
-    try {
-      const response = await supabase.functions.invoke('safro-transaction', {
-        body: { receiver: address }
-      });
+      try {
+        const response = await supabase.functions.invoke('safro-transaction', {
+          body: { receiver: address }
+        });
 
-      const { data: rawTxResult, error } = response;
+        const { data: rawTxResult, error } = response;
 
-      if (isRateLimitError(error) || isRateLimitError(rawTxResult)) {
-        showRateLimitError(rawTxResult?.error || error?.message || "Rate limit exceeded", rawTxResult?.rateLimitType);
-        return;
-      }
-      if (!rawTxResult || !rawTxResult.transactionHash) {
-        if (rawTxResult && typeof rawTxResult === 'object' && rawTxResult.error) {
-          const errorStr = String(rawTxResult.error);
-          if (errorStr.includes('Rate limit') || errorStr.includes('daily limit') || errorStr.includes('per 24h')) {
-            showRateLimitError(errorStr, rawTxResult?.rateLimitType);
-            return;
-          }
-
-          // Display the full error message in a toast
-          toast({
-            title: "Transaction error",
-            description: errorStr,
-            variant: "destructive",
-          });
-          setIsLoading(false);
+        // Handle rate limit errors from error or data
+        if (isRateLimitError(error) || isRateLimitError(rawTxResult)) {
+          showRateLimitError(rawTxResult?.error || (error as any)?.message || "Rate limit exceeded", (rawTxResult as any)?.rateLimitType);
           return;
         }
-        throw new Error('Transaction failed: ' + (error?.message || rawTxResult?.error || 'Unknown error'));
-      }
+
+        // If the Edge Function returned an error (non-rate-limit), surface it clearly
+        if (error) {
+          const details =
+            (error as any)?.context?.error ||
+            (error as any)?.error ||
+            (error as any)?.message ||
+            "Edge function error";
+          console.error("safro-transaction invoke error:", error);
+          toast({
+            title: "Transaction error",
+            description: (
+              <div className="max-w-[340px] break-words">{String(details)}</div>
+            ),
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!rawTxResult || !rawTxResult.transactionHash) {
+          // If function responded but without tx hash, display the returned error (if any)
+          const errMsg =
+            (rawTxResult as any)?.error ||
+            "No transaction hash returned from faucet. Please try again.";
+          console.error("safro-transaction unexpected response:", rawTxResult);
+          toast({
+            title: "Transaction error",
+            description: (
+              <div className="max-w-[340px] break-words">{String(errMsg)}</div>
+            ),
+            variant: "destructive",
+          });
+          return;
+        }
 
       const txData = {
         transactionHash: rawTxResult.transactionHash,
