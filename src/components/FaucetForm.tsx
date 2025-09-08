@@ -107,7 +107,7 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
     } catch (error) {
       console.error("safro-transaction catch error:", error);
       
-      // Check if this is a FunctionsHttpError (rate limit error)
+      // Check if this is a FunctionsHttpError (usually rate limit from 429 status)
       if (error instanceof Error && error.name === 'FunctionsHttpError') {
         try {
           // Extract the response data from FunctionsHttpError
@@ -117,35 +117,38 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
           console.log("FunctionsHttpError response data:", responseData);
           
           if (responseData && (responseData.error || responseData.rateLimitType)) {
-            // Show rate limit info with extracted details
+            // Show rate limit info with extracted details - never show error
             showRateLimitInfo(responseData.error, responseData.rateLimitType);
           } else {
-            // Fallback to generic rate limit message
+            // FunctionsHttpError from faucet is usually rate limit - show friendly message
             showRateLimitInfo("You have reached your daily faucet limit.");
           }
         } catch (parseError) {
           console.error("Error parsing FunctionsHttpError:", parseError);
+          // Still assume it's rate limit if it's FunctionsHttpError from faucet
           showRateLimitInfo("You have reached your daily faucet limit.");
         }
+        return; // Exit early - never show error for FunctionsHttpError
+      }
+
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "An unknown error occurred. Please try again later.";
+      
+      // Check if it's any rate limit related message
+      if (isRateLimitErrorMessage(errorMessage)) {
+        showRateLimitInfo(errorMessage);
       } else {
-        const errorMessage = error instanceof Error 
-          ? error.message 
-          : "An unknown error occurred. Please try again later.";
-        
-        if (isRateLimitErrorMessage(errorMessage)) {
-          showRateLimitInfo(errorMessage);
-        } else {
-          // Display the full error message
-          toast({
-            title: "Transaction error",
-            description: (
-              <div className="max-w-[340px] break-words">
-                {errorMessage}
-              </div>
-            ),
-            variant: "destructive",
-          });
-        }
+        // Only show error toast for non-rate-limit errors
+        toast({
+          title: "Transaction error",
+          description: (
+            <div className="max-w-[340px] break-words">
+              {errorMessage}
+            </div>
+          ),
+          variant: "destructive",
+        });
       }
     } finally {
       setIsLoading(false);
