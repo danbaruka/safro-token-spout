@@ -105,10 +105,28 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         ),
       });
     } catch (error) {
-      // Check if this is a FunctionsHttpError which could be a rate limit error
+      console.error("safro-transaction catch error:", error);
+      
+      // Check if this is a FunctionsHttpError (rate limit error)
       if (error instanceof Error && error.name === 'FunctionsHttpError') {
-        // For FunctionsHttpError, assume it's a rate limit error if it's from the faucet
-        showRateLimitInfo("You have reached your daily faucet limit.");
+        try {
+          // Extract the response data from FunctionsHttpError
+          const errorData = (error as any).context || (error as any);
+          const responseData = errorData.data || errorData.body;
+          
+          console.log("FunctionsHttpError response data:", responseData);
+          
+          if (responseData && (responseData.error || responseData.rateLimitType)) {
+            // Show rate limit info with extracted details
+            showRateLimitInfo(responseData.error, responseData.rateLimitType);
+          } else {
+            // Fallback to generic rate limit message
+            showRateLimitInfo("You have reached your daily faucet limit.");
+          }
+        } catch (parseError) {
+          console.error("Error parsing FunctionsHttpError:", parseError);
+          showRateLimitInfo("You have reached your daily faucet limit.");
+        }
       } else {
         const errorMessage = error instanceof Error 
           ? error.message 
