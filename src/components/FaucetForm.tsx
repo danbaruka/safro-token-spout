@@ -109,23 +109,49 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
       
       // Check if this is a FunctionsHttpError (usually rate limit from 429 status)
       if (error instanceof Error && error.name === 'FunctionsHttpError') {
+        console.log("FunctionsHttpError caught:", error);
+        console.log("Full error object:", JSON.stringify(error, null, 2));
+        
         try {
-          // Extract the response data from FunctionsHttpError
-          const errorData = (error as any).context || (error as any);
-          const responseData = errorData.data || errorData.body;
+          // Try multiple ways to extract response data from FunctionsHttpError
+          const errorObj = error as any;
+          let responseData = null;
           
-          console.log("FunctionsHttpError response data:", responseData);
+          // Try different possible locations for the response data
+          if (errorObj.context?.body) {
+            responseData = errorObj.context.body;
+          } else if (errorObj.context?.data) {
+            responseData = errorObj.context.data;
+          } else if (errorObj.body) {
+            responseData = errorObj.body;
+          } else if (errorObj.data) {
+            responseData = errorObj.data;
+          } else if (errorObj.details) {
+            responseData = errorObj.details;
+          }
+          
+          // If response data is a string, try to parse it as JSON
+          if (typeof responseData === 'string') {
+            try {
+              responseData = JSON.parse(responseData);
+            } catch {
+              // If parsing fails, keep as string
+            }
+          }
+          
+          console.log("Extracted response data:", responseData);
           
           if (responseData && (responseData.error || responseData.rateLimitType)) {
-            // Show rate limit info with extracted details - never show error
+            // Show rate limit info with extracted details
             showRateLimitInfo(responseData.error, responseData.rateLimitType);
           } else {
-            // FunctionsHttpError from faucet is usually rate limit - show friendly message
+            // ANY FunctionsHttpError from faucet is treated as rate limit
+            // This ensures we never show generic error messages
             showRateLimitInfo("You have reached your daily faucet limit.");
           }
         } catch (parseError) {
           console.error("Error parsing FunctionsHttpError:", parseError);
-          // Still assume it's rate limit if it's FunctionsHttpError from faucet
+          // Always default to friendly rate limit message for FunctionsHttpError
           showRateLimitInfo("You have reached your daily faucet limit.");
         }
         return; // Exit early - never show error for FunctionsHttpError
