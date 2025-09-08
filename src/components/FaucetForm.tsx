@@ -38,14 +38,14 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
       const { data: rawTxResult, error } = response;
 
       if (isRateLimitError(error) || isRateLimitError(rawTxResult)) {
-        showRateLimitError();
+        showRateLimitError(rawTxResult?.error || error?.message || "Rate limit exceeded", rawTxResult?.rateLimitType);
         return;
       }
       if (!rawTxResult || !rawTxResult.transactionHash) {
         if (rawTxResult && typeof rawTxResult === 'object' && rawTxResult.error) {
           const errorStr = String(rawTxResult.error);
           if (errorStr.includes('Rate limit') || errorStr.includes('daily limit') || errorStr.includes('per 24h')) {
-            showRateLimitError();
+            showRateLimitError(errorStr, rawTxResult?.rateLimitType);
             return;
           }
 
@@ -94,7 +94,7 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         : "An unknown error occurred. Please try again later.";
       
       if (isRateLimitErrorMessage(errorMessage)) {
-        showRateLimitError();
+        showRateLimitError(errorMessage);
       } else {
         // Display the full error message
         toast({
@@ -134,13 +134,28 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
     );
   };
 
-  const showRateLimitError = () => {
+  const showRateLimitError = (message?: string, rateLimitType?: string) => {
+    let description = message || "You have reached your daily limit.";
+    let additionalInfo = "Please try again tomorrow.";
+    
+    // Add specific guidance based on rate limit type
+    if (rateLimitType === "ip") {
+      additionalInfo = "This limit applies to your IP address. Try using a different network or wait 24 hours.";
+    } else if (rateLimitType === "address") {
+      additionalInfo = "This limit applies to your wallet address. Try using a different wallet or wait 24 hours.";
+    } else if (rateLimitType === "both") {
+      additionalInfo = "Both your IP address and wallet have reached the limit. Please wait 24 hours.";
+    }
+    
     toast({
-      title: "Daily limit reached",
+      title: "Rate Limit Exceeded",
       description: (
-        <div className="flex items-center">
-          <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
-          <span>You have reached your daily limit. Please try again tomorrow.</span>
+        <div className="space-y-2">
+          <div className="flex items-start">
+            <AlertTriangle className="h-4 w-4 mr-2 text-amber-500 mt-0.5 flex-shrink-0" />
+            <span className="text-sm break-words">{description}</span>
+          </div>
+          <p className="text-xs opacity-80 ml-6">{additionalInfo}</p>
         </div>
       ),
       variant: "destructive",
@@ -225,7 +240,7 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         </div>
         {/* Helper */}
         <span className="mt-1 text-xs md:text-sm leading-tight text-gray-400 dark:text-gray-400/60 w-full text-center md:text-left">
-          Please use an address starting with <b>addr_safro</b>. Only one request per day.
+          Please use an address starting with <b>addr_safro</b>. Limit: 3 requests per 24h per IP and per wallet.
         </span>
       </div>
 

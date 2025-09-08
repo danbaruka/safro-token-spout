@@ -69,11 +69,28 @@ async function insertUserRequest({ ip_address, region, user_agent, receiver_addr
   }
 }
 
-// Helper: Count requests by IP in last 24h
+// Helper: Count successful requests by IP in last 24h
 async function getRequestCountByIp(ip: string, sinceISO: string) {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://phqtdczpawzuvdpbxarn.supabase.co";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const url = `${SUPABASE_URL}/rest/v1/user_requests?ip_address=eq.${ip}&request_timestamp=gte.${sinceISO}&select=id`;
+  const url = `${SUPABASE_URL}/rest/v1/user_requests?ip_address=eq.${ip}&success=eq.true&request_timestamp=gte.${sinceISO}&select=id`;
+  const resp = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY!,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json"
+    }
+  });
+  if (!resp.ok) return 0;
+  const arr = await resp.json();
+  return Array.isArray(arr) ? arr.length : 0;
+}
+
+// Helper: Count successful requests by address in last 24h
+async function getRequestCountByAddress(address: string, sinceISO: string) {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://phqtdczpawzuvdpbxarn.supabase.co";
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const url = `${SUPABASE_URL}/rest/v1/user_requests?receiver_address=eq.${address}&success=eq.true&request_timestamp=gte.${sinceISO}&select=id`;
   const resp = await fetch(url, {
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY!,
@@ -260,11 +277,20 @@ serve(async (req) => {
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-    // 24 hour window
+    // 24 hour window for rate limiting
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const requestCount = await getRequestCountByIp(ip, since);
-    if (requestCount >= REQUESTS_LIMIT) {
-      // Insert failed log (enforced regardless of tx) for analysis
+    
+    // Check IP-based rate limiting
+    const ipRequestCount = await getRequestCountByIp(ip, since);
+    console.log(`IP ${ip}: ${ipRequestCount}/${REQUESTS_LIMIT} requests in last 24h`);
+    
+    // Check address-based rate limiting
+    const addressRequestCount = await getRequestCountByAddress(receiver_address, since);
+    console.log(`Address ${receiver_address}: ${addressRequestCount}/${REQUESTS_LIMIT} requests in last 24h`);
+    
+    // Enforce rate limits with specific error messages
+    if (ipRequestCount >= REQUESTS_LIMIT && addressRequestCount >= REQUESTS_LIMIT) {
+      // Both limits exceeded
       await insertUserRequest({
         ip_address: ip,
         region: null,
@@ -275,8 +301,45 @@ serve(async (req) => {
       });
       return new Response(
         JSON.stringify({
-          error: `Rate limit exceeded. Only ${REQUESTS_LIMIT} faucet requests allowed per 24h from the same IP.`,
-          success: false
+          error: `Rate limit exceeded. Both your IP address and wallet address have reached the maximum of ${REQUESTS_LIMIT} faucet requests per 24 hours.`,
+          success: false,
+          rateLimitType: "both"
+        }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    } else if (ipRequestCount >= REQUESTS_LIMIT) {
+      // IP limit exceeded
+      await insertUserRequest({
+        ip_address: ip,
+        region: null,
+        user_agent,
+        receiver_address,
+        success: false,
+        transaction_hash: null,
+      });
+      return new Response(
+        JSON.stringify({
+          error: `Rate limit exceeded. Your IP address has reached the maximum of ${REQUESTS_LIMIT} faucet requests per 24 hours.`,
+          success: false,
+          rateLimitType: "ip"
+        }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    } else if (addressRequestCount >= REQUESTS_LIMIT) {
+      // Address limit exceeded
+      await insertUserRequest({
+        ip_address: ip,
+        region: null,
+        user_agent,
+        receiver_address,
+        success: false,
+        transaction_hash: null,
+      });
+      return new Response(
+        JSON.stringify({
+          error: `Rate limit exceeded. This wallet address has already received the maximum of ${REQUESTS_LIMIT} faucet requests per 24 hours.`,
+          success: false,
+          rateLimitType: "address"
         }),
         { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
