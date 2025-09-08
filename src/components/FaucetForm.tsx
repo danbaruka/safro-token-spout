@@ -30,36 +30,36 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
       return;
     }
 
-      try {
-        const response = await supabase.functions.invoke('safro-transaction', {
-          body: { receiver: address }
+    try {
+      const response = await supabase.functions.invoke('safro-transaction', {
+        body: { receiver: address }
+      });
+
+      const { data: rawTxResult, error } = response;
+
+      // Handle rate limit errors from error or data
+      if (isRateLimitError(error) || isRateLimitError(rawTxResult)) {
+        showRateLimitInfo(rawTxResult?.error || (error as any)?.message || "Rate limit exceeded", (rawTxResult as any)?.rateLimitType);
+        return;
+      }
+
+      // If the Edge Function returned an error (non-rate-limit), surface it clearly
+      if (error) {
+        const details =
+          (error as any)?.context?.error ||
+          (error as any)?.error ||
+          (error as any)?.message ||
+          "Edge function error";
+        console.error("safro-transaction invoke error:", error);
+        toast({
+          title: "Transaction error",
+          description: (
+            <div className="max-w-[340px] break-words">{String(details)}</div>
+          ),
+          variant: "destructive",
         });
-
-        const { data: rawTxResult, error } = response;
-
-        // Handle rate limit errors from error or data
-        if (isRateLimitError(error) || isRateLimitError(rawTxResult)) {
-          showRateLimitInfo(rawTxResult?.error || (error as any)?.message || "Rate limit exceeded", (rawTxResult as any)?.rateLimitType);
-          return;
-        }
-
-        // If the Edge Function returned an error (non-rate-limit), surface it clearly
-        if (error) {
-          const details =
-            (error as any)?.context?.error ||
-            (error as any)?.error ||
-            (error as any)?.message ||
-            "Edge function error";
-          console.error("safro-transaction invoke error:", error);
-          toast({
-            title: "Transaction error",
-            description: (
-              <div className="max-w-[340px] break-words">{String(details)}</div>
-            ),
-            variant: "destructive",
-          });
-          return;
-        }
+        return;
+      }
 
         if (!rawTxResult || !rawTxResult.transactionHash) {
           // If function responded but without tx hash, display the returned error (if any)
@@ -105,23 +105,29 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         ),
       });
     } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "An unknown error occurred. Please try again later.";
-      
-      if (isRateLimitErrorMessage(errorMessage)) {
-        showRateLimitInfo(errorMessage);
+      // Check if this is a FunctionsHttpError which could be a rate limit error
+      if (error instanceof Error && error.name === 'FunctionsHttpError') {
+        // For FunctionsHttpError, assume it's a rate limit error if it's from the faucet
+        showRateLimitInfo("You have reached your daily faucet limit.");
       } else {
-        // Display the full error message
-        toast({
-          title: "Transaction error",
-          description: (
-            <div className="max-w-[340px] break-words">
-              {errorMessage}
-            </div>
-          ),
-          variant: "destructive",
-        });
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : "An unknown error occurred. Please try again later.";
+        
+        if (isRateLimitErrorMessage(errorMessage)) {
+          showRateLimitInfo(errorMessage);
+        } else {
+          // Display the full error message
+          toast({
+            title: "Transaction error",
+            description: (
+              <div className="max-w-[340px] break-words">
+                {errorMessage}
+              </div>
+            ),
+            variant: "destructive",
+          });
+        }
       }
     } finally {
       setIsLoading(false);
@@ -165,6 +171,10 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
     } else if (rateLimitType === "both") {
       description = "Both your network and wallet have reached today's limit.";
       additionalInfo = "Please wait 24 hours before requesting more test tokens.";
+    } else if (!rateLimitType) {
+      // Generic case when we don't have specific rate limit type info
+      description = "You have reached your daily faucet limit.";
+      additionalInfo = "You can request more tokens in 24 hours. Try using a different network or wallet if needed.";
     }
     
     toast({
