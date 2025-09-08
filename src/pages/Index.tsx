@@ -44,7 +44,7 @@ const Index = () => {
             <span>&nbsp;per request</span>
           </div>
           <p className="text-xs text-gray-400 mt-3 max-w-[380px]">
-            For testnet use only – Limited to 1 request per day per address.
+            For testnet use only – Limited to 3 requests per day per address.
           </p>
         </div>
 
