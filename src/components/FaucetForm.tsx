@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Wallet, ArrowRight, Copy, Check, RefreshCw } from 'lucide-react';
@@ -14,7 +14,34 @@ interface FaucetFormProps {
 const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps) => {
   const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [requestsLimit, setRequestsLimit] = useState(3); // Default fallback
   const { toast } = useToast();
+
+  // Fetch dynamic requests limit from database
+  useEffect(() => {
+    const fetchRequestsLimit = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('safro_faucet_config')
+          .select('requests_limit_per_day')
+          .single();
+        
+        if (error) {
+          console.error('Error fetching requests limit:', error);
+          return; // Keep default value
+        }
+        
+        if (data?.requests_limit_per_day) {
+          setRequestsLimit(data.requests_limit_per_day);
+        }
+      } catch (error) {
+        console.error('Error fetching requests limit:', error);
+        // Keep default value
+      }
+    };
+
+    fetchRequestsLimit();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,10 +134,23 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
     } catch (error) {
       console.error("Transaction error:", error);
       
-      // Since this faucet function ONLY returns errors for rate limits,
-      // we always show the friendly rate limit message for ANY error
-      // This prevents showing technical messages like "Edge Function returned a non-2xx status code"
-      showRateLimitInfo("You have reached the 3 requests per day limit. Please wait until tomorrow to request more test tokens.");
+      // Check if this is a rate limit error using existing detection logic
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isRateLimit = (error as any)?.name === 'FunctionsHttpError' || 
+                         (error as any)?.status === 429 ||
+                         isRateLimitErrorMessage(errorMessage);
+      
+      if (isRateLimit) {
+        // Show friendly rate limit message with dynamic limit
+        showRateLimitInfo(`You have reached the ${requestsLimit} requests per day limit. Please wait until tomorrow to request more test tokens.`);
+      } else {
+        // For other errors, show generic friendly message without technical details
+        toast({
+          title: "Request Failed",
+          description: "Unable to process your request at the moment. Please try again later.",
+          variant: "destructive",
+        });
+      }
       return;
     } finally {
       setIsLoading(false);
@@ -261,7 +301,7 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         </div>
         {/* Helper */}
         <span className="mt-1 text-xs md:text-sm leading-tight text-gray-400 dark:text-gray-400/60 w-full text-center md:text-left">
-          Please use an address starting with <b>addr_safro</b>. Limit: 3 requests per 24h per IP and per wallet.
+          Please use an address starting with <b>addr_safro</b>. Limit: {requestsLimit} requests per 24h per IP and per wallet.
         </span>
       </div>
 
