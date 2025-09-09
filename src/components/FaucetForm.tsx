@@ -64,25 +64,23 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
 
       const { data: rawTxResult, error } = response;
 
-      // Handle rate limit errors from error or data
-      if (isRateLimitError(error) || isRateLimitError(rawTxResult)) {
-        showRateLimitInfo(rawTxResult?.error || (error as any)?.message || "Rate limit exceeded", (rawTxResult as any)?.rateLimitType);
+      // Check for any rate limit indicators first
+      const isRateLimit = isRateLimitError(error) || 
+                         isRateLimitError(rawTxResult) ||
+                         (error as any)?.name === 'FunctionsHttpError' ||
+                         (error as any)?.status === 429;
+
+      if (isRateLimit) {
+        showRateLimitInfo(`You have reached the ${requestsLimit} requests per day limit. Please wait until tomorrow to request more test tokens.`, (rawTxResult as any)?.rateLimitType);
         return;
       }
 
-      // If the Edge Function returned an error (non-rate-limit), surface it clearly
+      // For any other error, show generic friendly message
       if (error) {
-        const details =
-          (error as any)?.context?.error ||
-          (error as any)?.error ||
-          (error as any)?.message ||
-          "Edge function error";
         console.error("safro-transaction invoke error:", error);
         toast({
-          title: "Transaction error",
-          description: (
-            <div className="max-w-[340px] break-words">{String(details)}</div>
-          ),
+          title: "Request Failed",
+          description: "Unable to process your request at the moment. Please try again later.",
           variant: "destructive",
         });
         return;
