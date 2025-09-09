@@ -105,19 +105,17 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         ),
       });
     } catch (error) {
-      console.error("safro-transaction catch error:", error);
-      
-      // Check if this is a FunctionsHttpError (usually rate limit from 429 status)
+      // Check if this is a FunctionsHttpError (rate limit from 429 status)
       if (error instanceof Error && error.name === 'FunctionsHttpError') {
-        console.log("FunctionsHttpError caught - treating as rate limit");
-        
         // ALL FunctionsHttpError instances from the faucet function are rate limits
-        // The edge function only returns 429 status for rate limits, so we always show friendly message
-        // This prevents showing "Edge Function returned a non-2xx status code"
+        // Show friendly message instead of technical error
         showRateLimitInfo("You have reached your daily faucet limit.");
-        return; // Exit early - never show error for FunctionsHttpError
+        return; // Exit early - never show technical error for rate limits
       }
 
+      // For other errors, log for debugging but show user-friendly message
+      console.error("Transaction error:", error);
+      
       const errorMessage = error instanceof Error 
         ? error.message 
         : "An unknown error occurred. Please try again later.";
@@ -128,7 +126,7 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
       } else {
         // Only show error toast for non-rate-limit errors
         toast({
-          title: "Transaction error",
+          title: "Transaction error", 
           description: (
             <div className="max-w-[340px] break-words">
               {errorMessage}
