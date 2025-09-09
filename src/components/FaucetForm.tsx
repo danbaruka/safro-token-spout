@@ -105,36 +105,13 @@ const FaucetForm = ({ tokenAmount = 250, tokenSymbol = "SAF" }: FaucetFormProps)
         ),
       });
     } catch (error) {
-      // Check if this is a FunctionsHttpError (rate limit from 429 status)
-      if (error instanceof Error && error.name === 'FunctionsHttpError') {
-        // ALL FunctionsHttpError instances from the faucet function are rate limits
-        // Show friendly message instead of technical error
-        showRateLimitInfo("You have reached your daily faucet limit.");
-        return; // Exit early - never show technical error for rate limits
-      }
-
-      // For other errors, log for debugging but show user-friendly message
       console.error("Transaction error:", error);
       
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "An unknown error occurred. Please try again later.";
-      
-      // Check if it's any rate limit related message
-      if (isRateLimitErrorMessage(errorMessage)) {
-        showRateLimitInfo(errorMessage);
-      } else {
-        // Only show error toast for non-rate-limit errors
-        toast({
-          title: "Transaction error", 
-          description: (
-            <div className="max-w-[340px] break-words">
-              {errorMessage}
-            </div>
-          ),
-          variant: "destructive",
-        });
-      }
+      // Since this faucet function ONLY returns errors for rate limits,
+      // we always show the friendly rate limit message for ANY error
+      // This prevents showing technical messages like "Edge Function returned a non-2xx status code"
+      showRateLimitInfo("You have reached the 3 requests per day limit. Please wait until tomorrow to request more test tokens.");
+      return;
     } finally {
       setIsLoading(false);
     }
